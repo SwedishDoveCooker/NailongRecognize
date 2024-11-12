@@ -214,7 +214,7 @@ def balance_dataset(dataset):
     X = [i for i in range(len(dataset))]
     y = [dataset[i][1] for i in range(len(dataset))]
     unique, counts = np.unique(y, return_counts=True)
-    print(f"Label distribution before balancing: {dict(zip(unique, counts))}")
+    # print(f"Label distribution before balancing: {dict(zip(unique, counts))}")
     X = np.array(X).reshape(-1, 1);y = np.array(y)
     min_class = unique[np.argmin(counts)];min_count = counts[np.argmin(counts)]
     smote = SMOTE(sampling_strategy={label: min_count * 10 if label != min_class else count 
@@ -223,7 +223,7 @@ def balance_dataset(dataset):
     pipeline = Pipeline(steps=[('o', smote), ('u', rus)])
     X_resampled, y_resampled = pipeline.fit_resample(X, y)
     unique, counts = np.unique(y_resampled, return_counts=True)
-    print(f"Label distribution after balancing: {dict(zip(unique, counts))}")
+    # print(f"Label distribution after balancing: {dict(zip(unique, counts))}")
     balanced_dataset = torch.utils.data.Subset(dataset, X_resampled.flatten())
     return balanced_dataset
 
@@ -235,15 +235,15 @@ test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
 num_features = model.fc.in_features
 model.fc = nn.Linear(num_features, 2)
-model = model.to('cuda' if torch.cuda.is_available() else 'cpu')
+model = model.to('cuda')
 
 optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-5)
-criterion = nn.CrossEntropyLoss(weight=torch.tensor([1.0, 2.0]).to('cuda'))
+criterion = nn.CrossEntropyLoss(weight=torch.tensor([1.0, 1.0]).to('cuda'))
 
 def train_model(model, train_loader, val_loader, epochs, optimizer, criterion, device):
     model.train()
     best_val_loss = float('inf')
-    patience = 5
+    patience = 7
     no_improvement_count = 0
 
     for stage in range(2):
