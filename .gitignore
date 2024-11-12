@@ -1,5 +1,10 @@
 input/*
+!input/.gitkeep
 negative_test/*
+!negative_test/.gitkeep
 test/*
+!test/.gitkeep
 train_negative/*
+!train_negative/.gitkeep
 train_positive/*
+!train_positive/.gitkeep
