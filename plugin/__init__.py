@@ -7,13 +7,13 @@ import filetype
 # from random import choice
 from pathlib import Path
 # from typing import Optional
-from nonebot.rule import is_type
-from nonebot.params import CommandArg
-from nonebot.plugin import PluginMetadata
-from nonebot.permission import SUPERUSER
-from nonebot import logger
-from nonebot import on_command
-from nonebot import get_bot
+# from nonebot.rule import is_type
+# from nonebot.params import CommandArg
+# from nonebot.plugin import PluginMetadata
+# from nonebot.permission import SUPERUSER
+# from nonebot import logger
+# from nonebot import on_command
+# from nonebot import get_bot
 from nonebot.plugin import on_message
 from nonebot.adapters.onebot.v11 import (
     Bot,
@@ -21,8 +21,8 @@ from nonebot.adapters.onebot.v11 import (
     Message,
     MessageSegment
 )
-from nonebot.adapters.onebot.v11 import PrivateMessageEvent, GroupMessageEvent
-from nonebot.log import default_format, default_filter
+# from nonebot.adapters.onebot.v11 import PrivateMessageEvent, GroupMessageEvent
+# from nonebot.log import default_format, default_filter
 from random import randint
 # from .tf_idf import compute_idf, rank_documents
 # from .simple_search import simple_search, very_ex_name_handler, name_handler
@@ -56,17 +56,6 @@ async def handle_message_seer(bot: Bot, event: Event):
     # logger.info(event.get_message()[1].__dict__['data']['url'])
     if flag:
         for URL in flag:
-            '''
-            async with aiohttp.ClientSession() as session:
-                r, extension = await fetch(session, URL)
-                if r:
-                    md5_hash = hashlib.md5(r).hexdigest()
-                    full_filename = f"{md5_hash}{extension}"
-                    folder_path = __dir.joinpath("assets", "uploads", full_filename)
-                    with open(folder_path, 'wb') as f:
-                        f.write(r)
-                    logger.info(f"Image saved: {full_filename} from URL: {URL}")
-            '''
             async with httpx.AsyncClient() as client:
                 response = await client.get(URL)
                 if response.status_code == 200:
@@ -82,7 +71,7 @@ async def handle_message_seer(bot: Bot, event: Event):
                     logger.error(f"failed to save img from URL: {URL}")
         input_dir = __dir.joinpath("input", unique_folder_name)
         if run_predictions(input_dir, model, test_transform, device):
-            target_dir = __dir.joinpath("input", "奶龙们", unique_folder_name)
+            target_dir = __dir.joinpath("input", "nailong", unique_folder_name)
             target_dir.parent.mkdir(parents=True, exist_ok=True)
             input_dir.rename(target_dir)
             await bot.call_api('delete_msg', message_id=event.message_id)
@@ -90,7 +79,7 @@ async def handle_message_seer(bot: Bot, event: Event):
             await seer.finish(MessageSegment.image(Path(__file__).parent / (str(randint(1,5)) + ".jpg")))
             # await seer.finish("发现奶龙")
         else:
-            target_dir = __dir.joinpath("input", "非奶龙", unique_folder_name)
+            target_dir = __dir.joinpath("input", "notnailong", unique_folder_name)
             target_dir.parent.mkdir(parents=True, exist_ok=True)
             input_dir.rename(target_dir)
             logger.info("没有发现奶龙")

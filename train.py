@@ -104,7 +104,7 @@ class FeatureExtract(object):
         self.resnet.eval()
         self.preprocess = transforms.Compose([
             transforms.Resize(224),
-            transforms.Lambda(lambda x: x.convert('RGB')),  # 确保图像是RGB格式
+            transforms.Lambda(lambda x: x.convert('RGB')),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
@@ -203,15 +203,14 @@ convert_images_to_jpg('./input')
 pc = ProducerConsumer()
 pc.run("train_positive/*.jpg")
 pc.run("train_negative/*.jpg")
-# pc.run("test/*.jpg")
-# pc.run("negative_test/*.jpg")
-# pc.run("input/*.jpg")
+pc.run("test/*.jpg")
+pc.run("negative_test/*.jpg")
+pc.run("input/*.jpg")
 
 train_dataset = NailongDataset(positive_root='./train_positive', negative_root='./train_negative', transform=train_transform)
 test_dataset = NailongDataset(positive_root='./test', negative_root='./negative_test', transform=test_transform)
 
 def balance_dataset(dataset):
-
     X = [i for i in range(len(dataset))]
     y = [dataset[i][1] for i in range(len(dataset))]
     unique, counts = np.unique(y, return_counts=True)
@@ -225,27 +224,6 @@ def balance_dataset(dataset):
     X_resampled, y_resampled = pipeline.fit_resample(X, y)
     unique, counts = np.unique(y_resampled, return_counts=True)
     print(f"Label distribution after balancing: {dict(zip(unique, counts))}")
-
-    '''
-    X = [i for i in range(len(dataset))]
-    y = [dataset[i][1] for i in range(len(dataset))]
-    
-    unique, counts = np.unique(y, return_counts=True)
-    print(f"Label distribution before balancing: {dict(zip(unique, counts))}")
-    
-    X = np.array(X).reshape(-1, 1)
-    y = np.array(y)
-    
-    smote = SMOTE(sampling_strategy='auto', random_state=42)
-    rus = RandomUnderSampler(sampling_strategy='auto', random_state=42)
-    pipeline = Pipeline(steps=[('o', smote), ('u', rus)])
-    
-    X_resampled, y_resampled = pipeline.fit_resample(X, y)
-    
-    unique, counts = np.unique(y_resampled, return_counts=True)
-    print(f"Label distribution after balancing: {dict(zip(unique, counts))}")
-    '''
-    
     balanced_dataset = torch.utils.data.Subset(dataset, X_resampled.flatten())
     return balanced_dataset
 
@@ -260,7 +238,7 @@ model.fc = nn.Linear(num_features, 2)
 model = model.to('cuda' if torch.cuda.is_available() else 'cpu')
 
 optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-5)
-criterion = nn.CrossEntropyLoss(weight=torch.tensor([1.0, 2.0]).to('cuda' if torch.cuda.is_available() else 'cpu'))
+criterion = nn.CrossEntropyLoss(weight=torch.tensor([1.0, 2.0]).to('cuda'))
 
 def train_model(model, train_loader, val_loader, epochs, optimizer, criterion, device):
     model.train()
@@ -318,64 +296,10 @@ def evaluate_model(model, test_loader, device):
     print(conf_matrix)
     return running_loss / len(test_loader)
 
-train_model(model, train_loader, test_loader, epochs=10, optimizer=optimizer, criterion=criterion, device='cuda' if torch.cuda.is_available() else 'cpu')
+train_model(model, train_loader, test_loader, epochs=10, optimizer=optimizer, criterion=criterion, device='cuda')
 
-evaluate_model(model, test_loader, device='cuda' if torch.cuda.is_available() else 'cpu')
+evaluate_model(model, test_loader, device='cuda')
 
 model_path = './nailong.pth'
 torch.save(model.state_dict(), model_path)
 print(f"Model saved to {model_path}")
-
-def predict_frame(frame, model, transform, device):
-    model.eval()
-    frame = transform(frame).unsqueeze(0).to(device)
-    with torch.no_grad():
-        output = model(frame)
-        _, pred = torch.max(output, 1)
-    return pred.item() == 1
-
-def predict_image_or_gif(file_path, model, transform, device):
-    model.eval()
-    if file_path.lower().endswith('.gif'):
-        gif = Image.open(file_path)
-        for frame in ImageSequence.Iterator(gif):
-            frame = frame.convert('RGB')
-            if predict_frame(frame, model, transform, device):
-                return True
-        return False
-    else:
-        image = Image.open(file_path).convert('RGB')
-        return predict_frame(image, model, transform, device)
-
-def predict_video(video_path, model, transform, device):
-    cap = cv2.VideoCapture(video_path)
-    frame_count = 0
-    found = False
-    while(cap.isOpened()):
-        ret, frame = cap.read()
-        if not ret:
-            break
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        pil_image = Image.fromarray(frame_rgb)
-        if predict_frame(pil_image, model, transform, device):
-            found = True
-            print(f"Video: {video_path}, Frame {frame_count}: True")
-        frame_count += 1
-    cap.release()
-    if not found:
-        print(f"Video: {video_path}, Prediction: False")
-    return found
-
-def test_input_directory(input_dir, model, transform, device):
-    convert_images_to_jpg(input_dir)
-    all_files = glob.glob(os.path.join(input_dir, '*.*'))
-    for file_path in all_files:
-        if file_path.lower().endswith(('.mp4', '.avi', '.mov')):
-            predict_video(file_path, model, transform, device)
-        else:
-            result = predict_image_or_gif(file_path, model, transform, device)
-            print(f"File: {file_path}, Prediction: {'True' if result else 'False'}")
-input_dir = './input'
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-# print(f"Using device: {device}")
-test_input_directory(input_dir, model, test_transform, device)

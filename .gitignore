@@ -8,3 +8,7 @@ train_negative/*
 !train_negative/.gitkeep
 train_positive/*
 !train_positive/.gitkeep
+plugin/nailong/*
+!plugin/nailong/.gitkeep
+plugin/notnailong/*
+!plugin/notnailong/.gitkeep
