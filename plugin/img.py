@@ -7,7 +7,6 @@ import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 import cv2
 
-# 将目录中的所有非JPG且非GIF图像文件转换为JPG格式
 def convert_images_to_jpg(directory):
     image_files = glob.glob(os.path.join(directory, '*.*'))
     
@@ -20,47 +19,42 @@ def convert_images_to_jpg(directory):
             os.remove(image_file)
             print(f"Deleted original file: {image_file}")
 
-# 定义数据预处理
 test_transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor()
 ])
 
-# 加载模型
 def load_model(model_path, device):
     model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', weights=None)
     num_features = model.fc.in_features
-    model.fc = nn.Linear(num_features, 2)  # 修改最后一层为分类层
+    model.fc = nn.Linear(num_features, 2)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model = model.to(device)
     model.eval()
     return model
 
 def predict_frame(frame, model, transform, device):
-    """ 对单帧图像进行预测 """
     model.eval()
     frame = transform(frame).unsqueeze(0).to(device)
     with torch.no_grad():
         output = model(frame)
         _, pred = torch.max(output, 1)
-    return pred.item() == 1  # 返回是否为奶龙元素
+    return pred.item() == 1
 
 def predict_image_or_gif(file_path, model, transform, device):
-    """ 对图像或GIF文件进行预测 """
     model.eval()
     if file_path.lower().endswith('.gif'):
         gif = Image.open(file_path)
         for frame in ImageSequence.Iterator(gif):
             frame = frame.convert('RGB')
             if predict_frame(frame, model, transform, device):
-                return True  # 发现奶龙元素
-        return False  # 没有发现奶龙元素
+                return True
+        return False
     else:
         image = Image.open(file_path).convert('RGB')
-        return predict_frame(image, model, transform, device)  # 返回是否为奶龙元素
+        return predict_frame(image, model, transform, device)
 
 def predict_video(video_path, model, transform, device):
-    """ 对视频文件的每一帧进行预测 """
     cap = cv2.VideoCapture(video_path)
     frame_count = 0
     found = False
@@ -72,14 +66,15 @@ def predict_video(video_path, model, transform, device):
         pil_image = Image.fromarray(frame_rgb)
         if predict_frame(pil_image, model, transform, device):
             found = True
-            print(f"Video: {video_path}, Frame {frame_count}: True")  # 发现奶龙元素
+            print(f"Video: {video_path}, Frame {frame_count}: True")
         frame_count += 1
     cap.release()
     if not found:
-        print(f"Video: {video_path}, Prediction: False")  # 没有发现奶龙元素
+        print(f"Video: {video_path}, Prediction: False")
     return found
 
 def run_predictions(input_dir, model, transform, device):
+    final_results = []
     convert_images_to_jpg(input_dir)
     all_files = glob.glob(os.path.join(input_dir, '*.*'))
     for file_path in all_files:
@@ -87,16 +82,15 @@ def run_predictions(input_dir, model, transform, device):
             predict_video(file_path, model, transform, device)
         else:
             result = predict_image_or_gif(file_path, model, transform, device)
-            print(f"File: {file_path}, Prediction: {'True' if result else 'False'}")
+            final_results.append(result)
+            # print(f"File: {file_path}, Prediction: {'True' if result else 'False'}")
+    return True if any(final_results) else False
 
 
 def main():
-    # 设备
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
-    # 模型路径
     model_path = './nailong.pth'
-    # 输入目录
     input_dir = './input'
     model = load_model(model_path, device)
     run_predictions(input_dir, model, test_transform, device)
