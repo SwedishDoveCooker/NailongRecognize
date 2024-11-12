@@ -12,3 +12,4 @@ plugin/nailong/*
 !plugin/nailong/.gitkeep
 plugin/notnailong/*
 !plugin/notnailong/.gitkeep
+releases/*
