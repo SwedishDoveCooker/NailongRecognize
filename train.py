@@ -195,7 +195,7 @@ test_transform = transforms.Compose([
     transforms.ToTensor()
 ])
 
-convert_images_to_jpg('./train_positive')
+'''convert_images_to_jpg('./train_positive')
 convert_images_to_jpg('./train_negative')
 convert_images_to_jpg('./test')
 convert_images_to_jpg('./negative_test')
@@ -205,10 +205,11 @@ pc.run("train_positive/*.jpg")
 pc.run("train_negative/*.jpg")
 pc.run("test/*.jpg")
 pc.run("negative_test/*.jpg")
-pc.run("input/*.jpg")
+pc.run("input/*.jpg")'''
 
-train_dataset = NailongDataset(positive_root='./train_positive', negative_root='./train_negative', transform=train_transform)
-test_dataset = NailongDataset(positive_root='./test', negative_root='./negative_test', transform=test_transform)
+if __name__ == '__main__':
+    train_dataset = NailongDataset(positive_root='./train_positive', negative_root='./train_negative', transform=train_transform)
+    test_dataset = NailongDataset(positive_root='./test', negative_root='./negative_test', transform=test_transform)
 
 def balance_dataset(dataset):
     X = [i for i in range(len(dataset))]
@@ -227,18 +228,19 @@ def balance_dataset(dataset):
     balanced_dataset = torch.utils.data.Subset(dataset, X_resampled.flatten())
     return balanced_dataset
 
-balanced_train_dataset = balance_dataset(train_dataset)
+if __name__ == '__main__':
+    balanced_train_dataset = balance_dataset(train_dataset)
 
-train_loader = DataLoader(balanced_train_dataset, batch_size=32, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+    train_loader = DataLoader(balanced_train_dataset, batch_size=32, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
-num_features = model.fc.in_features
-model.fc = nn.Linear(num_features, 2)
-model = model.to('cuda')
+    model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
+    num_features = model.fc.in_features
+    model.fc = nn.Linear(num_features, 2)
+    model = model.to('cuda')
 
-optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-5)
-criterion = nn.CrossEntropyLoss(weight=torch.tensor([1.0, 1.0]).to('cuda'))
+    optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-5)
+    criterion = nn.CrossEntropyLoss(weight=torch.tensor([1.0, 1.0]).to('cuda'))
 
 def train_model(model, train_loader, val_loader, epochs, optimizer, criterion, device):
     model.train()
@@ -296,10 +298,11 @@ def evaluate_model(model, test_loader, device):
     print(conf_matrix)
     return running_loss / len(test_loader)
 
-train_model(model, train_loader, test_loader, epochs=10, optimizer=optimizer, criterion=criterion, device='cuda')
+if __name__ == '__main__':
+    train_model(model, train_loader, test_loader, epochs=10, optimizer=optimizer, criterion=criterion, device='cuda')
 
-evaluate_model(model, test_loader, device='cuda')
+    evaluate_model(model, test_loader, device='cuda')
 
-model_path = './nailong.pth'
-torch.save(model.state_dict(), model_path)
-print(f"Model saved to {model_path}")
+    model_path = './nailong.pth'
+    torch.save(model.state_dict(), model_path)
+    print(f"Model saved to {model_path}")

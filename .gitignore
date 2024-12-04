@@ -13,3 +13,8 @@ plugin/nailong/*
 plugin/notnailong/*
 !plugin/notnailong/.gitkeep
 releases/*
+flagged/*
+gradio_fake.py
+graddddddddddddddio.py
+plugin/go.py
+plugin/nailong.pth
