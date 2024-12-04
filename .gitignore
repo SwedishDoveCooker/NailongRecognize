@@ -22,3 +22,7 @@ __pycache__/
 plugin/tg/.env
 plugin/qq/flagged/*
 plugin/tg/nailong.pth
+plugin/qq/example.jpg
+plugin/qq/test_attack.png
+plugin/qq/original_image.jpg
+plugin/qq/adversarial_image.jpg
