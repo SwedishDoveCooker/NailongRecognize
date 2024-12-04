@@ -50,4 +50,4 @@ touch .env
 npm run start
 ```
 
-请注意tg bot使用api工作, 请提前运行api服务器并配置正确的地址
+请注意tg bot使用api工作, 请提前运行api服务器并配置正确的地址, 若使用提供的api服务器, 请自行配置go环境
