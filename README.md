@@ -8,13 +8,13 @@ fork自项目 https://github.com/spawner1145/NailongRecognize 原作者spawner11
 使用方法(训练模型):
 
 ```
-pip install numpy torch torchvision scikit-learn imbalanced-learn opencv-python
+pip install -r requirements.txt
 python train.py
 ```
 
 模型会保存到 `nailong.pth` 下
 
-bot:
+qqbot:
 
 ```
 nb create
@@ -22,9 +22,32 @@ nb create
 
 输入项目名及依赖器等, 如QQ使用`Onebot`
 
-将 `plugins` 下代码放入插件目录中, 并在 `pyproject.toml` 中声明插件
+将 `plugins/qq` 下代码放入插件目录中, 并在 `pyproject.toml` 中声明插件
 
 ```
 nb run
 ```
 
+tgbot:
+
+```
+npm init
+```
+
+将 `plugins/tg` 下代码放入项目目录中并下载对应依赖
+
+```
+npm install
+```
+
+```
+touch .env
+```
+
+在 `.env` 中填入 `TELEGRAM_API_TOKEN` 和 `PROXY_HTTP_HOST`, `PROXY_HTTP_PORT`
+
+```
+npm run start
+```
+
+请注意tg bot使用api工作, 请提前运行api服务器并配置正确的地址
