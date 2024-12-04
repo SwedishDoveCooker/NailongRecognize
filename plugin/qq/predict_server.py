@@ -14,8 +14,8 @@ def predict_single_image(image):
             for frame in ImageSequence.Iterator(gif):
                 frame = frame.convert('RGB')
                 if predict_frame(frame, model, test_transform, device):
-                    return "Prediction: Positive"
-            return "Prediction: Negative"
+                    return "奶龙"
+            return "非奶龙"
         else:
             result = predict_frame(image, model, test_transform, device)
             return "奶龙" if result else "非奶龙"
