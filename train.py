@@ -1,156 +1,20 @@
 import os
 import glob
-from PIL import Image, ImageSequence
+from PIL import Image
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader, ConcatDataset, SubsetRandomSampler
+from torch.utils.data import Dataset, DataLoader
+# from torch.utils.data import ConcatDataset, SubsetRandomSampler
 import torchvision.transforms as transforms
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
-from sklearn.model_selection import train_test_split
+# from sklearn.model_selection import train_test_split
 from imblearn.over_sampling import SMOTE
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.pipeline import Pipeline
 import numpy as np
-import cv2
-# from .a import *
-import torchvision.models as models
-from tqdm import tqdm
-import threading
-import queue
-import shutil
-import uuid
-import concurrent.futures
-from torchvision.models.resnet import ResNet18_Weights
-
-def is_duplicate_old(features, feature, thres=0.99):
-    if len(features) == 0:
-        return False
-    for feat in features:
-        similarity = F.cosine_similarity(feat, feature, dim=0).item()
-        if similarity > thres:
-            return True
-    return False
-
-def is_duplicate(features, feature, thres=0.99):
-    if len(features) < 1000:
-        return is_duplicate_old(features, feature, thres=0.99)
-
-    num_vectors = len(features)
-    batch_size = 1000
-    max_similarity = -1
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        for i in range(0, num_vectors, batch_size):
-            batch_vector = torch.stack(features[i:i+batch_size])
-            similarity = F.cosine_similarity(feature.unsqueeze(0), batch_vector, dim=1)
-            batch_max_similarity, max_batch_index = torch.max(similarity, dim=0)
-            batch_max_similarity = batch_max_similarity.item()
-            if batch_max_similarity > thres:
-                return True
-    return False
-
-class ProducerConsumer:
-    def __init__(self):
-        self.queue = queue.Queue(maxsize=2000)
-        self.extract = FeatureExtract()
-        self.features = []
-
-    def produce(self, Path):
-        images = glob.glob(Path)
-        for img_path in tqdm(images):
-            # print(img_path)
-            feature = self.extract.feature_extract(img_path)
-            self.queue.put([img_path, feature])
-        self.queue.put(None)
-
-    def consume(self):
-        while True:
-            img_info = self.queue.get()
-            if img_info is None:
-                break
-            img_path, feature = img_info
-            if is_duplicate(self.features, feature):  
-                continue
-            else:
-                self.features.append(feature)
-                base_dir = os.path.dirname(img_path)
-                filename = os.path.basename(img_path)
-                file_ext = os.path.splitext(filename)[1]
-                new_filename = "%s%s" % (uuid.uuid4(), file_ext)
-                img_save_path = os.path.join(base_dir, new_filename)
-                try:
-                    shutil.copy(img_path, img_save_path)
-                    # print(f"Image saved to {img_save_path}")
-                    os.remove(img_path)
-                    # print(f"Original image {img_path} removed")
-                except Exception as e:
-                    print(f"Failed to save or remove image {img_path}: {e}")
-
-    def run(self, Path):
-        producer_thread = threading.Thread(target=self.produce(Path))
-        consumer_thread = threading.Thread(target=self.consume)
-
-        producer_thread.start()
-        consumer_thread.start()
-
-        producer_thread.join()
-        consumer_thread.join()
-
-class FeatureExtract(object):
-    def __init__(self):
-        self.resnet = models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
-        self.resnet = torch.nn.Sequential(*list(self.resnet.children())[:-1])
-        self.resnet.eval()
-        self.preprocess = transforms.Compose([
-            transforms.Resize(224),
-            transforms.Lambda(lambda x: x.convert('RGB')),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
-
-    def feature_extract(self, image_path):
-        image = Image.open(image_path)
-        input_tensor = self.preprocess(image)
-        input_batch = input_tensor.unsqueeze(0)
-        with torch.no_grad():
-            features = self.resnet(input_batch)
-        return features.squeeze()
-
-
-def process_gif(gif_path, output_dir):
-    try:
-        gif = Image.open(gif_path)
-        first_frame = next(ImageSequence.Iterator(gif))
-        first_frame = first_frame.convert('RGB')
-        frame_path = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(gif_path))[0]}.jpg")
-        first_frame.save(frame_path, 'JPEG')
-        print(f"Saved first frame to {frame_path}")
-        
-        gif.close()
-        os.remove(gif_path)
-        print(f"Deleted original GIF file: {gif_path}")
-    except PermissionError as e:
-        print(f"Failed to delete {gif_path}: {e}")
-    except Exception as e:
-        print(f"An error occurred while processing {gif_path}: {e}")
-
-def convert_images_to_jpg(directory):
-    image_files = glob.glob(os.path.join(directory, '*.*'))
-    
-    for image_file in image_files:
-        if image_file.lower().endswith('.gif'):
-            if directory == './input':
-                continue
-            else:
-                process_gif(image_file, directory)
-        elif not image_file.lower().endswith(('.jpg', '.jpeg', '.gif', '.mp4', '.avi', '.mov')):
-            img = Image.open(image_file).convert('RGB')
-            jpg_path = os.path.join(directory, f"{os.path.splitext(os.path.basename(image_file))[0]}.jpg")
-            img.save(jpg_path, 'JPEG')
-            print(f"Converted {image_file} to {jpg_path}")
-            os.remove(image_file)
-            print(f"Deleted original file: {image_file}")
+from deduplicator import ProducerConsumer
+from preprocessor import convert_images_to_jpg
 
 class NailongDataset(Dataset):
     def __init__(self, positive_root, negative_root, transform=None):
@@ -195,17 +59,19 @@ test_transform = transforms.Compose([
     transforms.ToTensor()
 ])
 
-'''convert_images_to_jpg('./train_positive')
-convert_images_to_jpg('./train_negative')
-convert_images_to_jpg('./test')
-convert_images_to_jpg('./negative_test')
-convert_images_to_jpg('./input')
-pc = ProducerConsumer()
-pc.run("train_positive/*.jpg")
-pc.run("train_negative/*.jpg")
-pc.run("test/*.jpg")
-pc.run("negative_test/*.jpg")
-pc.run("input/*.jpg")'''
+# 此处对图像的操作不可逆, 请提前备份且训练时若未修改数据集仅需开启一次即可
+if __name__ == '__main__':
+    convert_images_to_jpg('./train_positive')
+    convert_images_to_jpg('./train_negative')
+    convert_images_to_jpg('./test')
+    convert_images_to_jpg('./negative_test')
+    convert_images_to_jpg('./input')
+    pc = ProducerConsumer()
+    pc.run("train_positive/*.jpg")
+    pc.run("train_negative/*.jpg")
+    pc.run("test/*.jpg")
+    pc.run("negative_test/*.jpg")
+    pc.run("input/*.jpg")
 
 if __name__ == '__main__':
     train_dataset = NailongDataset(positive_root='./train_positive', negative_root='./train_negative', transform=train_transform)
@@ -237,10 +103,10 @@ if __name__ == '__main__':
     model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
     num_features = model.fc.in_features
     model.fc = nn.Linear(num_features, 2)
-    model = model.to('cuda')
+    model = model.to('cuda' if torch.cuda.is_available() else 'cpu')
 
     optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-5)
-    criterion = nn.CrossEntropyLoss(weight=torch.tensor([1.0, 1.0]).to('cuda'))
+    criterion = nn.CrossEntropyLoss(weight=torch.tensor([1.0, 2.0]).to('cuda' if torch.cuda.is_available() else 'cpu'))
 
 def train_model(model, train_loader, val_loader, epochs, optimizer, criterion, device):
     model.train()
@@ -299,10 +165,8 @@ def evaluate_model(model, test_loader, device):
     return running_loss / len(test_loader)
 
 if __name__ == '__main__':
-    train_model(model, train_loader, test_loader, epochs=10, optimizer=optimizer, criterion=criterion, device='cuda')
-
-    evaluate_model(model, test_loader, device='cuda')
-
+    train_model(model, train_loader, test_loader, epochs=10, optimizer=optimizer, criterion=criterion, device='cuda' if torch.cuda.is_available() else 'cpu')
+    evaluate_model(model, test_loader, device='cuda' if torch.cuda.is_available() else 'cpu')
     model_path = './nailong.pth'
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")

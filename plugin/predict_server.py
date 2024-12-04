@@ -18,7 +18,7 @@ def predict_single_image(image):
             return "Prediction: Negative"
         else:
             result = predict_frame(image, model, test_transform, device)
-            return "Prediction: Positive" if result else "Prediction: Negative"
+            return "奶龙" if result else "非奶龙"
     except Exception as e:
         return f"Error: {str(e)}"
 
